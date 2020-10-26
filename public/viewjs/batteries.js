@@ -1,7 +1,8 @@
 ﻿var batteriesTable = $('#batteries-table').DataTable({
 	'order': [[1, 'asc']],
 	'columnDefs': [
-		{ 'orderable': false, 'targets': 0 }
+		{ 'orderable': false, 'targets': 0 },
+		{ 'searchable': false, "targets": 0 }
 	],
 });
 $('#batteries-table tbody').removeClass("d-none");
@@ -18,7 +19,7 @@ $("#search").on("keyup", Delay(function()
 	batteriesTable.search(value).draw();
 }, 200));
 
-$(document).on('click', '.battery-delete-button', function (e)
+$(document).on('click', '.battery-delete-button', function(e)
 {
 	var objectName = $(e.currentTarget).attr('data-battery-name');
 	var objectId = $(e.currentTarget).attr('data-battery-id');
@@ -40,7 +41,7 @@ $(document).on('click', '.battery-delete-button', function (e)
 		{
 			if (result === true)
 			{
-				Grocy.Api.Delete('objects/batteries/' + objectId, { },
+				Grocy.Api.Delete('objects/batteries/' + objectId, {},
 					function(result)
 					{
 						window.location.href = U('/batteries');

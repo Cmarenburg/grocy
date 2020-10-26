@@ -2,37 +2,33 @@
 
 namespace Grocy\Controllers;
 
-use \Grocy\Services\RecipesService;
+use Grocy\Controllers\Users\User;
 
 class RecipesApiController extends BaseApiController
 {
-	public function __construct(\Slim\Container $container)
+	public function AddNotFulfilledProductsToShoppingList(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
-		parent::__construct($container);
-		$this->RecipesService = new RecipesService();
-	}
+		User::checkPermission($request, User::PERMISSION_SHOPPINGLIST_ITEMS_ADD);
 
-	protected $RecipesService;
-
-	public function AddNotFulfilledProductsToShoppingList(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
-	{
-		$requestBody = $request->getParsedBody();
+		$requestBody = $this->GetParsedAndFilteredRequestBody($request);
 		$excludedProductIds = null;
 
 		if ($requestBody !== null && array_key_exists('excludedProductIds', $requestBody))
 		{
 			$excludedProductIds = $requestBody['excludedProductIds'];
 		}
-		
-		$this->RecipesService->AddNotFulfilledProductsToShoppingList($args['recipeId'], $excludedProductIds);
+
+		$this->getRecipesService()->AddNotFulfilledProductsToShoppingList($args['recipeId'], $excludedProductIds);
 		return $this->EmptyApiResponse($response);
 	}
 
-	public function ConsumeRecipe(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
+	public function ConsumeRecipe(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
+		User::checkPermission($request, User::PERMISSION_STOCK_CONSUME);
+
 		try
 		{
-			$this->RecipesService->ConsumeRecipe($args['recipeId']);
+			$this->getRecipesService()->ConsumeRecipe($args['recipeId']);
 			return $this->EmptyApiResponse($response);
 		}
 		catch (\Exception $ex)
@@ -41,28 +37,34 @@ class RecipesApiController extends BaseApiController
 		}
 	}
 
-	public function GetRecipeFulfillment(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
+	public function GetRecipeFulfillment(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
 		try
-		{ 
-			if(!isset($args['recipeId']))
+		{
+			if (!isset($args['recipeId']))
 			{
-				return $this->ApiResponse($this->RecipesService->GetRecipesResolved());
+				return $this->FilteredApiResponse($response, $this->getRecipesService()->GetRecipesResolved(), $request->getQueryParams());
 			}
 
-			$recipeResolved = FindObjectInArrayByPropertyValue($this->RecipesService->GetRecipesResolved(), 'recipe_id', $args['recipeId']);
-			if(!$recipeResolved)
+			$recipeResolved = FindObjectInArrayByPropertyValue($this->getRecipesService()->GetRecipesResolved(), 'recipe_id', $args['recipeId']);
+
+			if (!$recipeResolved)
 			{
 				throw new \Exception('Recipe does not exist');
 			}
 			else
 			{
-				return $this->ApiResponse($recipeResolved);
+				return $this->ApiResponse($response, $recipeResolved);
 			}
-		} 
+		}
 		catch (\Exception $ex)
 		{
 			return $this->GenericErrorResponse($response, $ex->getMessage());
 		}
+	}
+
+	public function __construct(\DI\Container $container)
+	{
+		parent::__construct($container);
 	}
 }

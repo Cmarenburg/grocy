@@ -1,7 +1,8 @@
 ﻿var categoriesTable = $('#taskcategories-table').DataTable({
 	'order': [[1, 'asc']],
 	'columnDefs': [
-		{ 'orderable': false, 'targets': 0 }
+		{ 'orderable': false, 'targets': 0 },
+		{ 'searchable': false, "targets": 0 }
 	]
 });
 $('#taskcategories-table tbody').removeClass("d-none");
@@ -18,7 +19,7 @@ $("#search").on("keyup", Delay(function()
 	categoriesTable.search(value).draw();
 }, 200));
 
-$(document).on('click', '.task-category-delete-button', function (e)
+$(document).on('click', '.task-category-delete-button', function(e)
 {
 	var objectName = $(e.currentTarget).attr('data-category-name');
 	var objectId = $(e.currentTarget).attr('data-category-id');

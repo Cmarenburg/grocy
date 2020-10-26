@@ -1,7 +1,8 @@
 ﻿var groupsTable = $('#productgroups-table').DataTable({
 	'order': [[1, 'asc']],
 	'columnDefs': [
-		{ 'orderable': false, 'targets': 0 }
+		{ 'orderable': false, 'targets': 0 },
+		{ 'searchable': false, "targets": 0 }
 	]
 });
 $('#productgroups-table tbody').removeClass("d-none");
@@ -53,4 +54,13 @@ $(document).on('click', '.product-group-delete-button', function(e)
 			}
 		}
 	});
+});
+$(window).on("message", function(e)
+{
+	var data = e.originalEvent.data;
+
+	if (data.Message === "CloseAllModals")
+	{
+		window.location.reload();
+	}
 });

@@ -2,6 +2,7 @@
 	'order': [[2, 'desc']],
 	'columnDefs': [
 		{ 'orderable': false, 'targets': 0 },
+		{ 'searchable': false, "targets": 0 },
 		{ 'visible': false, 'targets': 3 }
 	],
 	'rowGroup': {
@@ -36,7 +37,7 @@ $("#status-filter").on("change", function()
 	tasksTable.column(5).search(value).draw();
 });
 
-$(".status-filter-button").on("click", function()
+$(".status-filter-message").on("click", function()
 {
 	var value = $(this).data("status-filter");
 	$("#status-filter").val(value);
@@ -62,10 +63,10 @@ $(document).on('click', '.do-task-button', function(e)
 		{
 			if (!$("#show-done-tasks").is(":checked"))
 			{
-				$('#task-' + taskId + '-row').fadeOut(500, function ()
+				animateCSS("#task-" + taskId + "-row", "fadeOut", function()
 				{
-					$(this).tooltip("hide");
-					$(this).remove();
+					$("#task-" + taskId + "-row").tooltip("hide");
+					$("#task-" + taskId + "-row").remove();
 				});
 			}
 			else
@@ -77,7 +78,7 @@ $(document).on('click', '.do-task-button', function(e)
 
 			Grocy.FrontendHelpers.EndUiBusy();
 			toastr.success(__t('Marked task %s as completed on %s', taskName, doneTime));
-			RefreshContextualTimeago();
+			RefreshContextualTimeago("#task-" + taskId + "-row");
 			RefreshStatistics();
 		},
 		function(xhr)
@@ -101,7 +102,7 @@ $(document).on('click', '.undo-task-button', function(e)
 	var taskId = $(e.currentTarget).attr('data-task-id');
 	var taskName = $(e.currentTarget).attr('data-task-name');
 
-	Grocy.Api.Post('tasks/' + taskId + '/undo', { },
+	Grocy.Api.Post('tasks/' + taskId + '/undo', {},
 		function()
 		{
 			window.location.reload();
@@ -114,7 +115,7 @@ $(document).on('click', '.undo-task-button', function(e)
 	);
 });
 
-$(document).on('click', '.delete-task-button', function (e)
+$(document).on('click', '.delete-task-button', function(e)
 {
 	e.preventDefault();
 
@@ -141,10 +142,10 @@ $(document).on('click', '.delete-task-button', function (e)
 				Grocy.Api.Delete('objects/tasks/' + objectId, {},
 					function(result)
 					{
-						$('#task-' + objectId + '-row').fadeOut(500, function ()
+						animateCSS("#task-" + objectId + "-row", "fadeOut", function()
 						{
-							$(this).tooltip("hide");
-							$(this).remove();
+							$("#task-" + objectId + "-row").tooltip("hide");
+							$("#task-" + objectId + "-row").remove();
 						});
 					},
 					function(xhr)
@@ -184,7 +185,8 @@ function RefreshStatistics()
 			var overdueCount = 0;
 			var now = moment();
 			var nextXDaysThreshold = moment().add(nextXDays, "days");
-			result.forEach(element => {
+			result.forEach(element =>
+			{
 				var date = moment(element.due_date);
 				if (date.isBefore(now))
 				{

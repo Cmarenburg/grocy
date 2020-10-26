@@ -2,22 +2,17 @@
 
 namespace Grocy\Controllers;
 
-use \Grocy\Services\CalendarService;
-
 class CalendarController extends BaseController
 {
-	public function __construct(\Slim\Container $container)
+	public function Overview(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
-		parent::__construct($container);
-		$this->CalendarService = new CalendarService();
+		return $this->renderPage($response, 'calendar', [
+			'fullcalendarEventSources' => $this->getCalendarService()->GetEvents()
+		]);
 	}
 
-	protected $CalendarService;
-
-	public function Overview(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
+	public function __construct(\DI\Container $container)
 	{
-		return $this->AppContainer->view->render($response, 'calendar', [
-			'fullcalendarEventSources' => $this->CalendarService->GetEvents()
-		]);
+		parent::__construct($container);
 	}
 }

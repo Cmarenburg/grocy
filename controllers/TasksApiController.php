@@ -2,36 +2,31 @@
 
 namespace Grocy\Controllers;
 
-use \Grocy\Services\TasksService;
+use Grocy\Controllers\Users\User;
 
 class TasksApiController extends BaseApiController
 {
-	public function __construct(\Slim\Container $container)
+	public function Current(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
-		parent::__construct($container);
-		$this->TasksService = new TasksService();
+		return $this->FilteredApiResponse($response, $this->getTasksService()->GetCurrent(), $request->getQueryParams());
 	}
 
-	protected $TasksService;
-
-	public function Current(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
+	public function MarkTaskAsCompleted(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
-		return $this->ApiResponse($this->TasksService->GetCurrent());
-	}
+		User::checkPermission($request, User::PERMISSION_TASKS_MARK_COMPLETED);
 
-	public function MarkTaskAsCompleted(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
-	{
-		$requestBody = $request->getParsedBody();
+		$requestBody = $this->GetParsedAndFilteredRequestBody($request);
 
 		try
 		{
 			$doneTime = date('Y-m-d H:i:s');
+
 			if (array_key_exists('done_time', $requestBody) && IsIsoDateTime($requestBody['done_time']))
 			{
 				$doneTime = $requestBody['done_time'];
 			}
 
-			$this->TasksService->MarkTaskAsCompleted($args['taskId'], $doneTime);
+			$this->getTasksService()->MarkTaskAsCompleted($args['taskId'], $doneTime);
 			return $this->EmptyApiResponse($response);
 		}
 		catch (\Exception $ex)
@@ -40,16 +35,23 @@ class TasksApiController extends BaseApiController
 		}
 	}
 
-	public function UndoTask(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
+	public function UndoTask(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
+		User::checkPermission($request, User::PERMISSION_TASKS_UNDO_EXECUTION);
+
 		try
 		{
-			$this->TasksService->UndoTask($args['taskId']);
+			$this->getTasksService()->UndoTask($args['taskId']);
 			return $this->EmptyApiResponse($response);
 		}
 		catch (\Exception $ex)
 		{
 			return $this->GenericErrorResponse($response, $ex->getMessage());
 		}
+	}
+
+	public function __construct(\DI\Container $container)
+	{
+		parent::__construct($container);
 	}
 }

@@ -18,6 +18,40 @@
 		{
 			"name": "Generic entity interactions",
 			"description": "A limited set of entities are directly exposed for convenience"
+		},
+		{
+			"name": "System"
+		},
+		{
+			"name": "User management"
+		},
+		{
+			"name": "User settings"
+		},
+		{
+			"name": "Stock"
+		},
+		{
+			"name": "Stock \"by-barcode\"",
+			"description": "Some of the *Stock* routes, but access them by the products barcode instead of its id"
+		},
+		{
+			"name": "Recipes"
+		},
+		{
+			"name": "Chores"
+		},
+		{
+			"name": "Batteries"
+		},
+		{
+			"name": "Tasks"
+		},
+		{
+			"name": "Calendar"
+		},
+		{
+			"name": "Files"
 		}
 	],
 	"paths": {
@@ -81,6 +115,37 @@
 				}
 			}
 		},
+		"/system/config": {
+			"get": {
+				"summary": "Returns all config settings",
+				"tags": [
+					"System"
+				],
+				"responses": {
+					"200": {
+						"description": "Key/value pairs of config settings",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"description": "Key/value pairs of config settings"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "The operation was not successful",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GenericErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
 		"/system/log-missing-localization": {
 			"post": {
 				"summary": "Logs a missing localization string",
@@ -129,7 +194,7 @@
 						"required": true,
 						"description": "A valid entity name",
 						"schema": {
-							"$ref": "#/components/internalSchemas/ExposedEntity"
+							"$ref": "#/components/internalSchemas/ExposedEntityButNoListing"
 						}
 					}
 				],
@@ -163,7 +228,7 @@
 											{
 												"$ref": "#/components/schemas/StockEntry"
 											}
-										]	
+										]
 									}
 								}
 							}
@@ -274,7 +339,7 @@
 						"required": true,
 						"description": "A valid entity name",
 						"schema": {
-							"$ref": "#/components/internalSchemas/ExposedEntity"
+							"$ref": "#/components/internalSchemas/ExposedEntityButNoListing"
 						}
 					},
 					{
@@ -292,7 +357,7 @@
 						"description": "An entity object",
 						"content": {
 							"application/json": {
-								"schema":{
+								"schema": {
 									"type": "object",
 									"oneOf": [
 										{
@@ -323,6 +388,16 @@
 					},
 					"400": {
 						"description": "The operation was not successful",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GenericErrorResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Object not found",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -552,12 +627,12 @@
 				],
 				"responses": {
 					"200": {
-						"description": "An entity object",
+						"description": "Key/value pairs of userfields",
 						"content": {
 							"application/json": {
 								"schema": {
 									"type": "object",
-									"description": "Just key/value pairs of userfields"
+									"description": "Key/value pairs of userfields"
 								}
 							}
 						}
@@ -605,7 +680,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"description": "Just key/value pairs of userfields"
+								"description": "Key/value pairs of userfields"
 							}
 						}
 					}
@@ -626,7 +701,7 @@
 					}
 				}
 			}
-		},		
+		},
 		"/files/{group}/{fileName}": {
 			"get": {
 				"summary": "Serves the given file",
@@ -673,8 +748,7 @@
 						"schema": {
 							"type": "integer"
 						}
-					}
-					,
+					},
 					{
 						"in": "query",
 						"name": "best_fit_width",
@@ -945,9 +1019,40 @@
 				}
 			}
 		},
+		"/user/settings": {
+			"get": {
+				"summary": "Returns all settings of the currently logged in user",
+				"tags": [
+					"User settings"
+				],
+				"responses": {
+					"200": {
+						"description": "Key/value pairs of user settings",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"description": "Key/value pairs of user settings"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "The operation was not successful",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GenericErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
 		"/user/settings/{settingKey}": {
 			"get": {
-				"summary": "Gets the given setting of the currently logged in user",
+				"summary": "Returns the given setting of the currently logged in user",
 				"tags": [
 					"User settings"
 				],
@@ -1052,6 +1157,141 @@
 				}
 			}
 		},
+		"/stock/entry/{entryId}": {
+			"get": {
+				"summary": "Returns details of the given stock",
+				"tags": [
+					"Stock"
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "entryId",
+						"required": true,
+						"description": "A valid stock row id",
+						"schema": {
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "A StockEntry Response object",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/StockEntry"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "The operation was not successful (possible errors are: Not existing product)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GenericErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			},
+			"put": {
+				"summary": "Edits the stock entry",
+				"tags": [
+					"Stock"
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "entryId",
+						"required": true,
+						"description": "A valid stock row id",
+						"schema": {
+							"type": "integer"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"amount": {
+										"type": "number",
+										"format": "number",
+										"description": "The amount to add - please note that when tare weight handling for the product is enabled, this needs to be the amount including the container weight (gross), the amount to be posted will be automatically calculated based on what is in stock and the defined tare weight"
+									},
+									"best_before_date": {
+										"type": "string",
+										"format": "date",
+										"description": "The best before date of the product to add, when omitted, the current date is used"
+									},
+									"price": {
+										"type": "number",
+										"format": "number",
+										"description": "The price per purchase quantity unit in configured currency"
+									},
+									"open": {
+										"type": "boolean",
+										"description": "If the stock entry was already opened or not"
+									},
+									"location_id": {
+										"type": "number",
+										"format": "integer",
+										"description": "If omitted, the default location of the product is used"
+									},
+									"shopping_location_id": {
+										"type": "number",
+										"format": "integer",
+										"description": "If omitted, no store will be affected"
+									},
+									"purchased_date": {
+										"type": "string",
+										"format": "date",
+										"description": "The date when this stock entry was purchased"
+									}
+								},
+								"example": {
+									"id": "2",
+									"amount": "1",
+									"best_before_date": "2021-07-19",
+									"purchased_date": "2020-01-01",
+									"price": "22.03",
+									"open": false,
+									"location_id": "4"
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "The operation was successful",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/StockEntry"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "The operation was not successful (possible errors are: Not existing product, invalid transaction type)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GenericErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
 		"/stock/volatile": {
 			"get": {
 				"summary": "Returns all products which are expiring soon, are already expired or currently missing",
@@ -1128,6 +1368,50 @@
 				}
 			}
 		},
+		"/stock/products/{productId}/locations": {
+			"get": {
+				"summary": "Returns all locations where the given product currently has stock",
+				"tags": [
+					"Stock"
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "productId",
+						"required": true,
+						"description": "A valid product id",
+						"schema": {
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "An array of StockLocation objects",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": {
+										"$ref": "#/components/schemas/StockLocation"
+									}
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "The operation was not successful (possible errors are: Not existing product)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GenericErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
 		"/stock/products/{productId}/entries": {
 			"get": {
 				"summary": "Returns all stock entries of the given product in order of next use (first expiring first, then first in first out)",
@@ -1142,6 +1426,15 @@
 						"description": "A valid product id",
 						"schema": {
 							"type": "integer"
+						}
+					},
+					{
+						"in": "query",
+						"name": "include_sub_products",
+						"required": false,
+						"description": "If sub products should be included (if the given product is a parent product and in addition to the ones of the given product)",
+						"schema": {
+							"type": "boolean"
 						}
 					}
 				],
@@ -1262,6 +1555,11 @@
 										"type": "number",
 										"format": "integer",
 										"description": "If omitted, the default location of the product is used"
+									},
+									"shopping_location_id": {
+										"type": "number",
+										"format": "integer",
+										"description": "If omitted, no store will be affected"
 									}
 								},
 								"example": {
@@ -1341,6 +1639,11 @@
 										"type": "number",
 										"format": "integer",
 										"description": "A valid recipe id for which this product was used (for statistical purposes only)"
+									},
+									"location_id": {
+										"type": "number",
+										"format": "integer",
+										"description": "A valid location id (if supplied, only stock at the given location is considered, if ommitted, stock of any location is considered)"
 									}
 								},
 								"example": {
@@ -1365,6 +1668,82 @@
 					},
 					"400": {
 						"description": "The operation was not successful (possible errors are: Not existing product, invalid transaction type, given amount > current stock amount)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GenericErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/stock/products/{productId}/transfer": {
+			"post": {
+				"summary": "Transfers the given amount of the given product from one location to another (this is currently not supported for tare weight handling enabled products)",
+				"tags": [
+					"Stock"
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "productId",
+						"required": true,
+						"description": "A valid product id",
+						"schema": {
+							"type": "integer"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"amount": {
+										"type": "number",
+										"description": "The amount to transfer - please note that when tare weight handling for the product is enabled, this needs to be the amount including the container weight (gross), the amount to be posted will be automatically calculated based on what is in stock and the defined tare weight"
+									},
+									"location_id_from": {
+										"type": "number",
+										"format": "integer",
+										"description": "A valid location id, the location from where the product should be transfered"
+									},
+									"location_id_to": {
+										"type": "number",
+										"format": "integer",
+										"description": "A valid location id, the location to where the product should be transfered"
+									},
+									"stock_entry_id": {
+										"type": "string",
+										"description": "A specific stock entry id to transfer, if used, the amount has to be 1"
+									}
+								},
+								"example": {
+									"amount": 1,
+									"location_id_from": 1,
+									"location_id_to": 2
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "The operation was successful",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/StockLogEntry"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "The operation was not successful (possible errors are: Not existing product, no existing from or to location, given amount > current stock amount at the source location)",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1408,6 +1787,11 @@
 										"type": "string",
 										"format": "date",
 										"description": "The best before date which applies to added products"
+									},
+									"shopping_location_id": {
+										"type": "number",
+										"format": "integer",
+										"description": "If omitted, no store will be affected"
 									},
 									"location_id": {
 										"type": "number",
@@ -1516,7 +1900,7 @@
 			"get": {
 				"summary": "Returns details of the given product by its barcode",
 				"tags": [
-					"Stock"
+					"Stock \"by-barcode\""
 				],
 				"parameters": [
 					{
@@ -1557,7 +1941,7 @@
 			"post": {
 				"summary": "Adds the given amount of the by its barcode given product to stock",
 				"tags": [
-					"Stock"
+					"Stock \"by-barcode\""
 				],
 				"parameters": [
 					{
@@ -1639,7 +2023,7 @@
 			"post": {
 				"summary": "Removes the given amount of the by its barcode given product from stock",
 				"tags": [
-					"Stock"
+					"Stock \"by-barcode\""
 				],
 				"parameters": [
 					{
@@ -1678,6 +2062,11 @@
 										"type": "number",
 										"format": "integer",
 										"description": "A valid recipe id for which this product was used (for statistical purposes only)"
+									},
+									"location_id": {
+										"type": "number",
+										"format": "integer",
+										"description": "A valid location id (if supplied, only stock at the given location is considered, if ommitted, stock of any location is considered)"
 									}
 								},
 								"example": {
@@ -1713,11 +2102,87 @@
 				}
 			}
 		},
+		"/stock/products/by-barcode/{barcode}/transfer": {
+			"post": {
+				"summary": "Transfers the given amount of the by its barcode given product from one location to another (this is currently not supported for tare weight handling enabled products)",
+				"tags": [
+					"Stock \"by-barcode\""
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "barcode",
+						"required": true,
+						"description": "Barcode",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"amount": {
+										"type": "number",
+										"description": "The amount to transfer - please note that when tare weight handling for the product is enabled, this needs to be the amount including the container weight (gross), the amount to be posted will be automatically calculated based on what is in stock and the defined tare weight"
+									},
+									"location_id_from": {
+										"type": "number",
+										"format": "integer",
+										"description": "A valid location id, the location from where the product should be transfered"
+									},
+									"location_id_to": {
+										"type": "number",
+										"format": "integer",
+										"description": "A valid location id, the location to where the product should be transfered"
+									},
+									"stock_entry_id": {
+										"type": "string",
+										"description": "A specific stock entry id to transfer, if used, the amount has to be 1"
+									}
+								},
+								"example": {
+									"amount": 1,
+									"location_id_from": 1,
+									"location_id_to": 2
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "The operation was successful",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/StockLogEntry"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "The operation was not successful (possible errors are: Not existing product, no existing from or to location, given amount > current stock amount at the source location)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GenericErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
 		"/stock/products/by-barcode/{barcode}/inventory": {
 			"post": {
 				"summary": "Inventories the by its barcode given product (adds/removes based on the given new amount)",
 				"tags": [
-					"Stock"
+					"Stock \"by-barcode\""
 				],
 				"parameters": [
 					{
@@ -1789,7 +2254,7 @@
 			"post": {
 				"summary": "Marks the given amount of the by its barcode given product as opened",
 				"tags": [
-					"Stock"
+					"Stock \"by-barcode\""
 				],
 				"parameters": [
 					{
@@ -1852,6 +2317,48 @@
 		"/stock/shoppinglist/add-missing-products": {
 			"post": {
 				"summary": "Adds currently missing products (below defined min. stock amount) to the given shopping list",
+				"tags": [
+					"Stock"
+				],
+				"requestBody": {
+					"required": false,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"list_id": {
+										"type": "integer",
+										"description": "The shopping list to use, when omitted, the default shopping list (with id 1) is used"
+									}
+								},
+								"example": {
+									"list_id": 2
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"204": {
+						"description": "The operation was successful"
+					},
+					"400": {
+						"description": "The operation was not successful (possible errors are: Not existing shopping list)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GenericErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/stock/shoppinglist/add-expired-products": {
+			"post": {
+				"summary": "Adds expired products to the given shopping list",
 				"tags": [
 					"Stock"
 				],
@@ -2119,7 +2626,85 @@
 				}
 			}
 		},
-		"/stock/barcodes/external-lookup": {
+		"/stock/transactions/{transactionId}": {
+			"get": {
+				"summary": "Returns all stock bookings of the given transaction id",
+				"tags": [
+					"Stock"
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "transactionId",
+						"required": true,
+						"description": "A valid stock transaction id",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "An array of StockLogEntry objects",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "array",
+									"items": {
+										"$ref": "#/components/schemas/StockLogEntry"
+									}
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "The operation was not successful (possible errors are: Not existing transaction)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GenericErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/stock/transactions/{transactionId}/undo": {
+			"post": {
+				"summary": "Undoes a transaction",
+				"tags": [
+					"Stock"
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "transactionId",
+						"required": true,
+						"description": "A valid stock transaction id",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "The operation was successful"
+					},
+					"400": {
+						"description": "The operation was not successful (possible errors are: Not existing transaction)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GenericErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/stock/barcodes/external-lookup/{barcode}": {
 			"get": {
 				"summary": "Executes an external barcode lookoup via the configured plugin with the given barcode",
 				"tags": [
@@ -2127,7 +2712,7 @@
 				],
 				"parameters": [
 					{
-						"in": "query",
+						"in": "path",
 						"name": "barcode",
 						"required": true,
 						"description": "The barcode to lookup up",
@@ -2153,6 +2738,57 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/ExternalBarcodeLookupResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "The operation was not successful (possible errors are: Plugin error)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GenericErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/productbarcodedetails/{barcode}": {
+			"get": {
+				"summary": "Executes a product barcode details lookoup via the configured plugin with the given barcode",
+				"tags": [
+					"Product"
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "barcode",
+						"required": true,
+						"description": "The barcode to lookup up",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "add",
+						"required": false,
+						"description": "When true, the product is added to the database on a successful lookup and the new product id is in included in the response",
+						"schema": {
+							"type": "boolean",
+							"default": false
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "An ProductBarcodeDetails object or null, when nothing was found for the given barcode",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ProductBarcodeDetailsResponse"
 								}
 							}
 						}
@@ -2196,7 +2832,7 @@
 								"properties": {
 									"excludedProductIds": {
 										"type": "array",
-										"items":{
+										"items": {
 											"type": "number",
 											"format": "integer"
 										},
@@ -2841,12 +3477,14 @@
 				"enum": [
 					"products",
 					"chores",
+					"product_barcodes",
 					"batteries",
 					"locations",
 					"quantity_units",
 					"quantity_unit_conversions",
 					"shopping_list",
 					"shopping_lists",
+					"shopping_locations",
 					"recipes",
 					"recipes_pos",
 					"recipes_nestings",
@@ -2861,7 +3499,33 @@
 					"meal_plan"
 				]
 			},
-			"ExposedEntitiesPreventListing": {
+			"ExposedEntityButNoListing": {
+				"type": "string",
+				"enum": [
+					"products",
+					"product_barcodes",
+					"chores",
+					"batteries",
+					"locations",
+					"quantity_units",
+					"quantity_unit_conversions",
+					"shopping_list",
+					"shopping_lists",
+					"shopping_locations",
+					"recipes",
+					"recipes_pos",
+					"recipes_nestings",
+					"tasks",
+					"task_categories",
+					"product_groups",
+					"equipment",
+					"userfields",
+					"userentities",
+					"userobjects",
+					"meal_plan"
+				]
+			},
+			"EntityEditRequiresAdmin": {
 				"type": "string",
 				"enum": [
 					"api_keys"
@@ -2944,6 +3608,13 @@
 					"row_created_timestamp": {
 						"type": "string",
 						"format": "date-time"
+					},
+					"shopping_location_id": {
+						"type": "integer"
+					},
+					"userfields": {
+						"type": "object",
+						"description": "Key/value pairs of userfields"
 					}
 				},
 				"example": {
@@ -2964,7 +3635,9 @@
 					"allow_partial_units_in_stock": "0",
 					"enable_tare_weight_handling": "0",
 					"tare_weight": "0.0",
-					"not_check_stock_fulfillment_for_recipes": "0"
+					"not_check_stock_fulfillment_for_recipes": "0",
+					"shopping_location_id": null,
+					"userfields": null
 				}
 			},
 			"QuantityUnit": {
@@ -2988,6 +3661,10 @@
 					},
 					"plural_forms": {
 						"type": "string"
+					},
+					"userfields": {
+						"type": "object",
+						"description": "Key/value pairs of userfields"
 					}
 				},
 				"example": {
@@ -2996,7 +3673,8 @@
 					"description": null,
 					"row_created_timestamp": "2019-05-02 20:12:25",
 					"name_plural": "Pieces",
-					"plural_forms": null
+					"plural_forms": null,
+					"userfields": null
 				}
 			},
 			"Location": {
@@ -3014,13 +3692,77 @@
 					"row_created_timestamp": {
 						"type": "string",
 						"format": "date-time"
+					},
+					"userfields": {
+						"type": "object",
+						"description": "Key/value pairs of userfields"
 					}
 				},
 				"example": {
 					"id": "2",
 					"name": "0",
 					"description": null,
-					"row_created_timestamp": "2019-05-02 20:12:25"
+					"row_created_timestamp": "2019-05-02 20:12:25",
+					"userfields": null
+				}
+			},
+			"ShoppingLocation": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "integer"
+					},
+					"name": {
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"row_created_timestamp": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"userfields": {
+						"type": "object",
+						"description": "Key/value pairs of userfields"
+					}
+				},
+				"example": {
+					"id": "2",
+					"name": "0",
+					"description": null,
+					"row_created_timestamp": "2019-05-02 20:12:25",
+					"userfields": null
+				}
+			},
+			"StockLocation": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "integer"
+					},
+					"product_id": {
+						"type": "integer"
+					},
+					"amount": {
+						"type": "integer"
+					},
+					"location_id": {
+						"type": "integer"
+					},
+					"location_name": {
+						"type": "string"
+					},
+					"location_is_freezer": {
+						"type": "integer"
+					}
+				},
+				"example": {
+					"id": "1",
+					"product_id": "3",
+					"amount": "2",
+					"location_id": "1",
+					"name": "Fridge"
 				}
 			},
 			"StockEntry": {
@@ -3033,6 +3775,9 @@
 						"type": "integer"
 					},
 					"location_id": {
+						"type": "integer"
+					},
+					"shopping_location_id": {
 						"type": "integer"
 					},
 					"amount": {
@@ -3076,7 +3821,8 @@
 					"open": "0",
 					"opened_date": null,
 					"row_created_timestamp": "2019-05-03 18:24:04",
-					"location_id": "4"
+					"location_id": "4",
+					"shopping_location_id": null
 				}
 			},
 			"RecipeFulfillmentResponse": {
@@ -3113,6 +3859,9 @@
 					"product": {
 						"$ref": "#/components/schemas/Product"
 					},
+					"product_barcodes": {
+						"$ref": "#/components/schemas/ProductBarcodeDetailsResponse"
+					},
 					"quantity_unit_purchase": {
 						"$ref": "#/components/schemas/QuantityUnit"
 					},
@@ -3140,6 +3889,17 @@
 					"last_price": {
 						"type": "number",
 						"format": "number"
+					},
+					"avg_price": {
+						"type": "number",
+						"format": "number"
+					},
+					"oldest_price": {
+						"type": "number",
+						"format": "number"
+					},
+					"last_shopping_location_id": {
+						"type": "integer"
 					},
 					"location": {
 						"$ref": "#/components/schemas/Location"
@@ -3172,8 +3932,18 @@
 						"allow_partial_units_in_stock": "0",
 						"enable_tare_weight_handling": "0",
 						"tare_weight": "0.0",
-						"not_check_stock_fulfillment_for_recipes": "0"
+						"not_check_stock_fulfillment_for_recipes": "0",
+						"last_shopping_location_id": null
 					},
+					"product_barcodes": [
+						{
+							"id": "1",
+							"product_id": "13",
+							"barcode": "01321230213",
+							"qu_factor_purchase_to_stock": "10.0",
+							"shopping_location_id": "2"
+						}
+					],
 					"last_purchased": null,
 					"last_used": null,
 					"stock_amount": "2",
@@ -3195,6 +3965,9 @@
 						"plural_forms": null
 					},
 					"last_price": null,
+					"avg_price": null,
+					"oldest_price": null,
+					"last_shopping_location_id": null,
 					"next_best_before_date": "2019-07-07",
 					"location": {
 						"id": "4",
@@ -3216,6 +3989,31 @@
 					"price": {
 						"type": "number",
 						"format": "number"
+					},
+					"shopping_location": {
+						"$ref": "#/components/schemas/ShoppingLocation"
+					}
+				}
+			},
+			"ProductBarcodeDetailsResponse": {
+				"type": "object",
+				"properties": {
+					"product_id": {
+						"type": "integer"
+					},
+					"barcode": {
+						"type": "string"
+					},
+					"qu_factor_purchase_to_stock": {
+						"type": "number",
+						"format": "number"
+					},
+					"barcode": {
+						"type": "string",
+						"description": "Can contain multiple barcodes separated by comma"
+					},
+					"shopping_location_id": {
+						"type": "integer"
 					}
 				}
 			},
@@ -3446,6 +4244,10 @@
 					"row_created_timestamp": {
 						"type": "string",
 						"format": "date-time"
+					},
+					"userfields": {
+						"type": "object",
+						"description": "Key/value pairs of userfields"
 					}
 				}
 			},
@@ -3472,6 +4274,10 @@
 					"row_created_timestamp": {
 						"type": "string",
 						"format": "date-time"
+					},
+					"userfields": {
+						"type": "object",
+						"description": "Key/value pairs of userfields"
 					}
 				}
 			},
@@ -3546,6 +4352,10 @@
 					"row_created_timestamp": {
 						"type": "string",
 						"format": "date-time"
+					},
+					"userfields": {
+						"type": "object",
+						"description": "Key/value pairs of userfields"
 					}
 				}
 			},
@@ -3645,6 +4455,9 @@
 					"is_aggregated_amount": {
 						"type": "boolean",
 						"description": "Indicates wheter this product has sub-products or not / if the fields `amount_aggregated` and `amount_opened_aggregated` are filled"
+					},
+					"product": {
+						"$ref": "#/components/schemas/Product"
 					}
 				}
 			},
@@ -3687,7 +4500,7 @@
 				"properties": {
 					"expiring_products": {
 						"type": "array",
-						"items":{
+						"items": {
 							"$ref": "#/components/schemas/CurrentStockResponse"
 						}
 					},
@@ -3700,7 +4513,20 @@
 					"missing_products": {
 						"type": "array",
 						"items": {
-							"$ref": "#/components/schemas/CurrentStockResponse"
+							"properties": {
+								"id": {
+									"type": "integer"
+								},
+								"name": {
+									"type": "string"
+								},
+								"amount_missing": {
+									"type": "number"
+								},
+								"is_partly_in_stock": {
+									"type": "integer"
+								}
+							}
 						}
 					}
 				}
@@ -3737,6 +4563,10 @@
 					"row_created_timestamp": {
 						"type": "string",
 						"format": "date-time"
+					},
+					"userfields": {
+						"type": "object",
+						"description": "Key/value pairs of userfields"
 					}
 				}
 			},
@@ -3776,7 +4606,7 @@
 	},
 	"security": [
 		{
-			"ApiKeyAuth": [ ]
+			"ApiKeyAuth": []
 		}
 	]
 }

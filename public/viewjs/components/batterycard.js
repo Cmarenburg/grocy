@@ -1,4 +1,4 @@
-Grocy.Components.BatteryCard = { };
+Grocy.Components.BatteryCard = {};
 
 Grocy.Components.BatteryCard.Refresh = function(batteryId)
 {
@@ -17,7 +17,7 @@ Grocy.Components.BatteryCard.Refresh = function(batteryId)
 			$('#batterycard-battery-journal-button').removeClass("disabled");
 
 			EmptyElementWhenMatches('#batterycard-battery-last-charged-timeago', __t('timeago_nan'));
-			RefreshContextualTimeago();
+			RefreshContextualTimeago(".batterycard");
 		},
 		function(xhr)
 		{

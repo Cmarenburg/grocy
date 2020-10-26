@@ -2,62 +2,38 @@
 
 namespace Grocy\Middleware;
 
-use \Grocy\Services\SessionService;
-use \Grocy\Services\LocalizationService;
+use Grocy\Services\SessionService;
+use Psr\Http\Message\ResponseFactoryInterface;
+use Psr\Http\Message\ServerRequestInterface as Request;
 
-class SessionAuthMiddleware extends BaseMiddleware
+class SessionAuthMiddleware extends AuthMiddleware
 {
-	public function __construct(\Slim\Container $container, string $sessionCookieName)
+	public function __construct(\DI\Container $container, ResponseFactoryInterface $responseFactory)
 	{
-		parent::__construct($container);
-		$this->SessionCookieName = $sessionCookieName;
+		parent::__construct($container, $responseFactory);
 	}
 
-	protected $SessionCookieName;
-
-	public function __invoke(\Slim\Http\Request $request, \Slim\Http\Response $response, callable $next)
+	public function authenticate(Request $request)
 	{
-		$route = $request->getAttribute('route');
-		$routeName = $route->getName();
-		$sessionService = new SessionService();
-
-		if ($routeName === 'root')
+		if (!defined('GROCY_SHOW_AUTH_VIEWS'))
 		{
-			$response = $next($request, $response);
+			define('GROCY_SHOW_AUTH_VIEWS', true);
 		}
-		elseif (GROCY_IS_DEMO_INSTALL || GROCY_IS_EMBEDDED_INSTALL || GROCY_DISABLE_AUTH)
-		{
-			$user = $sessionService->GetDefaultUser();
-			define('GROCY_AUTHENTICATED', true);
-			define('GROCY_USER_USERNAME', $user->username);
 
-			$response = $next($request, $response);
+		$sessionService = SessionService::getInstance();
+
+		if (!isset($_COOKIE[SessionService::SESSION_COOKIE_NAME]) || !$sessionService->IsValidSession($_COOKIE[SessionService::SESSION_COOKIE_NAME]))
+		{
+			return null;
 		}
 		else
 		{
-			if ((!isset($_COOKIE[$this->SessionCookieName]) || !$sessionService->IsValidSession($_COOKIE[$this->SessionCookieName])) && $routeName !== 'login')
-			{
-				define('GROCY_AUTHENTICATED', false);
-				$response = $response->withRedirect($this->AppContainer->UrlManager->ConstructUrl('/login'));
-			}
-			else
-			{
-				if ($routeName !== 'login')
-				{
-					$user = $sessionService->GetUserBySessionKey($_COOKIE[$this->SessionCookieName]);
-					define('GROCY_AUTHENTICATED', true);
-					define('GROCY_USER_USERNAME', $user->username);
-					define('GROCY_USER_ID', $user->id);
-				}
-				else
-				{
-					define('GROCY_AUTHENTICATED', false);
-				}
-
-				$response = $next($request, $response);
-			}
+			return $sessionService->GetUserBySessionKey($_COOKIE[SessionService::SESSION_COOKIE_NAME]);
 		}
+	}
 
-		return $response;
+	public static function ProcessLogin(array $postParams)
+	{
+		throw new \Exception('Not implemented');
 	}
 }

@@ -1,7 +1,8 @@
 ﻿var batteriesOverviewTable = $('#batteries-overview-table').DataTable({
 	'order': [[2, 'desc']],
 	'columnDefs': [
-		{ 'orderable': false, 'targets': 0 }
+		{ 'orderable': false, 'targets': 0 },
+		{ 'searchable': false, "targets": 0 }
 	]
 });
 $('#batteries-overview-table tbody').removeClass("d-none");
@@ -32,7 +33,7 @@ $("#status-filter").on("change", function()
 	batteriesOverviewTable.column(4).search(value).draw();
 });
 
-$(".status-filter-button").on("click", function()
+$(".status-filter-message").on("click", function()
 {
 	var value = $(this).data("status-filter");
 	$("#status-filter").val(value);
@@ -75,26 +76,19 @@ $(document).on('click', '.track-charge-cycle-button', function(e)
 						batteryRow.addClass("table-warning");
 					}
 
-					$('#battery-' + batteryId + '-last-tracked-time').parent().effect('highlight', { }, 500);
-					$('#battery-' + batteryId + '-last-tracked-time').fadeOut(500, function()
-					{
-						$(this).text(trackedTime).fadeIn(500);
-					});
-					$('#battery-' + batteryId + '-last-tracked-time-timeago').attr('datetime', trackedTime);
+					animateCSS("#battery-" + batteryId + "-row td:not(:first)", "shake");
 
+					$('#battery-' + batteryId + '-last-tracked-time').text(trackedTime);
+					$('#battery-' + batteryId + '-last-tracked-time-timeago').attr('datetime', trackedTime);
 					if (result.battery.charge_interval_days != 0)
 					{
-						$('#battery-' + batteryId + '-next-charge-time').parent().effect('highlight', { }, 500);
-						$('#battery-' + batteryId + '-next-charge-time').fadeOut(500, function()
-						{
-							$(this).text(result.next_estimated_charge_time).fadeIn(500);
-						});
+						$('#battery-' + batteryId + '-next-charge-time').text(result.next_estimated_charge_time);
 						$('#battery-' + batteryId + '-next-charge-time-timeago').attr('datetime', result.next_estimated_charge_time);
 					}
 
 					Grocy.FrontendHelpers.EndUiBusy();
 					toastr.success(__t('Tracked charge cycle of battery %1$s on %2$s', batteryName, trackedTime));
-					RefreshContextualTimeago();
+					RefreshContextualTimeago("#battery-" + batteryId + "-row");
 					RefreshStatistics();
 				},
 				function(xhr)
@@ -128,7 +122,8 @@ function RefreshStatistics()
 			var overdueCount = 0;
 			var now = moment();
 			var nextXDaysThreshold = moment().add(nextXDays, "days");
-			result.forEach(element => {
+			result.forEach(element =>
+			{
 				var date = moment(element.next_estimated_charge_time);
 				if (date.isBefore(now))
 				{

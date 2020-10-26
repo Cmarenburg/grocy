@@ -116,7 +116,8 @@ $('#quantityunit-form input').keydown(function(event)
 var quConversionsTable = $('#qu-conversions-table').DataTable({
 	'order': [[1, 'asc']],
 	'columnDefs': [
-		{ 'orderable': false, 'targets': 0 }
+		{ 'orderable': false, 'targets': 0 },
+		{ 'searchable': false, "targets": 0 }
 	]
 });
 $('#qu-conversions-table tbody').removeClass("d-none");
@@ -148,7 +149,7 @@ $(document).on('click', '.qu-conversion-delete-button', function(e)
 		{
 			if (result === true)
 			{
-				Grocy.Api.Delete('objects/quantity_unit_conversions/' + objectId, { },
+				Grocy.Api.Delete('objects/quantity_unit_conversions/' + objectId, {},
 					function(result)
 					{
 						Grocy.QuantityUnitEditFormRedirectUri = "reload";
@@ -164,7 +165,7 @@ $(document).on('click', '.qu-conversion-delete-button', function(e)
 	});
 });
 
-$(document).on('click', '.qu-conversion-edit-button', function (e)
+$(document).on('click', '.qu-conversion-edit-button', function(e)
 {
 	var id = $(e.currentTarget).attr('data-qu-conversion-id');
 	Grocy.QuantityUnitEditFormRedirectUri = U("/quantityunitconversion/" + id.toString() + "?qu-unit=editobjectid");

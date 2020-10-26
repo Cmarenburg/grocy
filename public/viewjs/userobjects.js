@@ -1,7 +1,8 @@
 ﻿var userobjectsTable = $('#userobjects-table').DataTable({
 	'order': [[1, 'asc']],
 	'columnDefs': [
-		{ 'orderable': false, 'targets': 0 }
+		{ 'orderable': false, 'targets': 0 },
+		{ 'searchable': false, "targets": 0 }
 	]
 });
 $('#userobjects-table tbody').removeClass("d-none");
@@ -18,7 +19,7 @@ $("#search").on("keyup", Delay(function()
 	userobjectsTable.search(value).draw();
 }, 200));
 
-$(document).on('click', '.userobject-delete-button', function (e)
+$(document).on('click', '.userobject-delete-button', function(e)
 {
 	var objectId = $(e.currentTarget).attr('data-userobject-id');
 
@@ -39,7 +40,7 @@ $(document).on('click', '.userobject-delete-button', function (e)
 		{
 			if (result === true)
 			{
-				Grocy.Api.Delete('objects/userobjects/' + objectId, { },
+				Grocy.Api.Delete('objects/userobjects/' + objectId, {},
 					function(result)
 					{
 						window.location.reload();

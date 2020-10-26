@@ -1,10 +1,13 @@
 ﻿var stockOverviewTable = $('#stock-overview-table').DataTable({
-	'order': [[3, 'asc']],
+	'order': [[4, 'asc']],
+	'colReorder': false,
 	'columnDefs': [
 		{ 'orderable': false, 'targets': 0 },
-		{ 'visible': false, 'targets': 4 },
-		{ 'visible': false, 'targets': 5 },
-		{ 'visible': false, 'targets': 6 }
+		{ 'searchable': false, "targets": 0 },
+		{ 'searchable': false, "targets": 0 },
+		{ 'visible': false, 'targets': 6 },
+		{ 'visible': false, 'targets': 7 },
+		{ 'visible': false, 'targets': 8 }
 	],
 });
 $('#stock-overview-table tbody').removeClass("d-none");
@@ -17,8 +20,12 @@ $("#location-filter").on("change", function()
 	{
 		value = "";
 	}
+	else
+	{
+		value = "xx" + value + "xx";
+	}
 
-	stockOverviewTable.column(4).search(value).draw();
+	stockOverviewTable.column(6).search(value).draw();
 });
 
 $("#product-group-filter").on("change", function()
@@ -28,8 +35,12 @@ $("#product-group-filter").on("change", function()
 	{
 		value = "";
 	}
+	else
+	{
+		value = "xx" + value + "xx";
+	}
 
-	stockOverviewTable.column(6).search(value).draw();
+	stockOverviewTable.column(8).search(value).draw();
 });
 
 $("#status-filter").on("change", function()
@@ -43,14 +54,26 @@ $("#status-filter").on("change", function()
 	// Transfer CSS classes of selected element to dropdown element (for background)
 	$(this).attr("class", $("#" + $(this).attr("id") + " option[value='" + value + "']").attr("class") + " form-control");
 
-	stockOverviewTable.column(5).search(value).draw();
+	stockOverviewTable.column(7).search(value).draw();
 });
 
-$(".status-filter-button").on("click", function()
+$(".status-filter-message").on("click", function()
 {
 	var value = $(this).data("status-filter");
 	$("#status-filter").val(value);
 	$("#status-filter").trigger("change");
+});
+
+$("#clear-filter-button").on("click", function()
+{
+	$("#search").val("");
+	$("#status-filter").val("all");
+	$("#product-group-filter").val("all");
+	$("#location-filter").val("all");
+	stockOverviewTable.column(6).search("").draw();
+	stockOverviewTable.column(7).search("").draw();
+	stockOverviewTable.column(8).search("").draw();
+	stockOverviewTable.search("").draw();
 });
 
 $("#search").on("keyup", Delay(function()
@@ -76,6 +99,7 @@ $(document).on('click', '.product-consume-button', function(e)
 
 	var productId = $(e.currentTarget).attr('data-product-id');
 	var consumeAmount = $(e.currentTarget).attr('data-consume-amount');
+	var originalTotalStockAmount = $(e.currentTarget).attr('data-original-total-stock-amount');
 	var wasSpoiled = $(e.currentTarget).hasClass("product-consume-button-spoiled");
 
 	Grocy.Api.Post('stock/products/' + productId + '/consume', { 'amount': consumeAmount, 'spoiled': wasSpoiled },
@@ -84,7 +108,15 @@ $(document).on('click', '.product-consume-button', function(e)
 			Grocy.Api.Get('stock/products/' + productId,
 				function(result)
 				{
-					var toastMessage = __t('Removed %1$s of %2$s from stock', consumeAmount.toString() + " " + __n(consumeAmount, result.quantity_unit_stock.name, result.quantity_unit_stock.name_plural), result.product.name) + '<br><a class="btn btn-secondary btn-sm mt-2" href="#" onclick="UndoStockBooking(' + bookingResponse.id + ')"><i class="fas fa-undo"></i> ' + __t("Undo") + '</a>';
+					if (result.product.enable_tare_weight_handling == 1)
+					{
+						var toastMessage = __t('Removed %1$s of %2$s from stock', parseFloat(originalTotalStockAmount).toString() + " " + __n(consumeAmount, result.quantity_unit_stock.name, result.quantity_unit_stock.name_plural), result.product.name) + '<br><a class="btn btn-secondary btn-sm mt-2" href="#" onclick="UndoStockTransaction(\'' + bookingResponse.transaction_id + '\')"><i class="fas fa-undo"></i> ' + __t("Undo") + '</a>';
+					}
+					else
+					{
+						var toastMessage = __t('Removed %1$s of %2$s from stock', consumeAmount.toString() + " " + __n(consumeAmount, result.quantity_unit_stock.name, result.quantity_unit_stock.name_plural), result.product.name) + '<br><a class="btn btn-secondary btn-sm mt-2" href="#" onclick="UndoStockTransaction(\'' + bookingResponse.transaction_id + '\')"><i class="fas fa-undo"></i> ' + __t("Undo") + '</a>';
+					}
+
 					if (wasSpoiled)
 					{
 						toastMessage += " (" + __t("Spoiled") + ")";
@@ -137,7 +169,7 @@ $(document).on('click', '.product-open-button', function(e)
 					}
 
 					Grocy.FrontendHelpers.EndUiBusy();
-					toastr.success(__t('Marked %1$s of %2$s as opened', 1 + " " + productQuName, productName) + '<br><a class="btn btn-secondary btn-sm mt-2" href="#" onclick="UndoStockBooking(' + bookingResponse.id + ')"><i class="fas fa-undo"></i> ' + __t("Undo") + '</a>');
+					toastr.success(__t('Marked %1$s of %2$s as opened', 1 + " " + productQuName, productName) + '<br><a class="btn btn-secondary btn-sm mt-2" href="#" onclick="UndoStockTransaction(\'' + bookingResponse.transaction_id + '\')"><i class="fas fa-undo"></i> ' + __t("Undo") + '</a>');
 					RefreshStatistics();
 					RefreshProductRow(productId);
 				},
@@ -168,10 +200,24 @@ function RefreshStatistics()
 		function(result)
 		{
 			var amountSum = 0;
-			result.forEach(element => {
+			result.forEach(element =>
+			{
 				amountSum += parseInt(element.amount);
 			});
-			$("#info-current-stock").text(__n(result.length, '%s Product', '%s Products') + ", " + __n(amountSum, '%s Unit', '%s Units'));
+
+			if (!Grocy.FeatureFlags.GROCY_FEATURE_FLAG_STOCK_PRICE_TRACKING)
+			{
+				$("#info-current-stock").text(__n(result.length, '%s Product', '%s Products'));
+			}
+			else
+			{
+				var valueSum = 0;
+				result.forEach(element =>
+				{
+					valueSum += parseInt(element.value);
+				});
+				$("#info-current-stock").text(__n(result.length, '%s Product', '%s Products') + ", " + __t('%s total value', valueSum.toLocaleString(undefined, { style: "currency", currency: Grocy.Currency })));
+			}
 		},
 		function(xhr)
 		{
@@ -195,102 +241,6 @@ function RefreshStatistics()
 }
 RefreshStatistics();
 
-$(document).on("click", ".product-purchase-button", function(e)
-{
-	e.preventDefault();
-
-	var productId = $(e.currentTarget).attr("data-product-id");
-	
-	bootbox.dialog({
-		message: '<iframe height="650px" class="embed-responsive" src="' + U("/purchase?embedded&product=") + productId.toString() + '"></iframe>',
-		size: 'large',
-		backdrop: true,
-		closeButton: false,
-		buttons: {
-			cancel: {
-				label: __t('Cancel'),
-				className: 'btn-secondary responsive-button',
-				callback: function()
-				{
-					bootbox.hideAll();
-				}
-			}
-		}
-	});
-});
-
-$(document).on("click", ".product-consume-custom-amount-button", function(e)
-{
-	e.preventDefault();
-
-	var productId = $(e.currentTarget).attr("data-product-id");
-
-	bootbox.dialog({
-		message: '<iframe height="650px" class="embed-responsive" src="' + U("/consume?embedded&product=") + productId.toString() + '"></iframe>',
-		size: 'large',
-		backdrop: true,
-		closeButton: false,
-		buttons: {
-			cancel: {
-				label: __t('Cancel'),
-				className: 'btn-secondary responsive-button',
-				callback: function()
-				{
-					bootbox.hideAll();
-				}
-			}
-		}
-	});
-});
-
-$(document).on("click", ".product-inventory-button", function(e)
-{
-	e.preventDefault();
-
-	var productId = $(e.currentTarget).attr("data-product-id");
-	
-	bootbox.dialog({
-		message: '<iframe height="650px" class="embed-responsive" src="' + U("/inventory?embedded&product=") + productId.toString() + '"></iframe>',
-		size: 'large',
-		backdrop: true,
-		closeButton: false,
-		buttons: {
-			cancel: {
-				label: __t('Cancel'),
-				className: 'btn-secondary responsive-button',
-				callback: function()
-				{
-					bootbox.hideAll();
-				}
-			}
-		}
-	});
-});
-
-$(document).on("click", ".product-add-to-shopping-list-button", function(e)
-{
-	e.preventDefault();
-
-	var productId = $(e.currentTarget).attr("data-product-id");
-	
-	bootbox.dialog({
-		message: '<iframe height="650px" class="embed-responsive" src="' + U("/shoppinglistitem/new?embedded&updateexistingproduct&product=") + productId.toString() + '"></iframe>',
-		size: 'large',
-		backdrop: true,
-		closeButton: false,
-		buttons: {
-			cancel: {
-				label: __t('Cancel'),
-				className: 'btn-secondary responsive-button',
-				callback: function()
-				{
-					bootbox.hideAll();
-				}
-			}
-		}
-	});
-});
-
 function RefreshProductRow(productId)
 {
 	productId = productId.toString();
@@ -308,7 +258,7 @@ function RefreshProductRow(productId)
 			var expiringThreshold = moment().add($("#info-expiring-products").data("next-x-days"), "days");
 			var now = moment();
 			var nextBestBeforeDate = moment(result.next_best_before_date);
-			
+
 			productRow.removeClass("table-warning");
 			productRow.removeClass("table-danger");
 			productRow.removeClass("table-info");
@@ -323,44 +273,35 @@ function RefreshProductRow(productId)
 				productRow.addClass("table-warning");
 			}
 
-			if (result.stock_amount == 0 && result.product.min_stock_amount == 0)
+			if (result.stock_amount == 0 && result.stock_amount_aggregated == 0 && result.product.min_stock_amount == 0)
 			{
-				$('#product-' + productId + '-row').fadeOut(500, function()
+				animateCSS("#product-" + productId + "-row", "fadeOut", function()
 				{
-					$(this).tooltip("hide");
-					$(this).addClass("d-none");
+					$("#product-" + productId + "-row").tooltip("hide");
+					$("#product-" + productId + "-row").addClass("d-none");
 				});
 			}
 			else
 			{
-				$('#product-' + productId + '-qu-name').text(__n(result.stock_amount, result.quantity_unit_stock.name, result.quantity_unit_stock.name_plural));
-				$('#product-' + productId + '-amount').parent().effect('highlight', { }, 500);
-				$('#product-' + productId + '-amount').fadeOut(500, function ()
-				{
-					$(this).text(result.stock_amount).fadeIn(500);
-				});
-				$('#product-' + productId + '-consume-all-button').attr('data-consume-amount', result.stock_amount);
+				animateCSS("#product-" + productId + "-row td:not(:first)", "shake");
 
-				$('#product-' + productId + '-next-best-before-date').parent().effect('highlight', { }, 500);
-				$('#product-' + productId + '-next-best-before-date').fadeOut(500, function()
-				{
-					$(this).text(result.next_best_before_date).fadeIn(500);
-				});
+				$('#product-' + productId + '-qu-name').text(__n(result.stock_amount, result.quantity_unit_stock.name, result.quantity_unit_stock.name_plural));
+				$('#product-' + productId + '-amount').text(result.stock_amount);
+				$('#product-' + productId + '-consume-all-button').attr('data-consume-amount', result.stock_amount);
+				$('#product-' + productId + '-factor-purchase-amount').text(__t('( %s', result.stock_factor_purchase_amount));
+				$('#product-' + productId + '-value').text(result.stock_value);
+				$('#product-' + productId + '-next-best-before-date').text(result.next_best_before_date);
 				$('#product-' + productId + '-next-best-before-date-timeago').attr('datetime', result.next_best_before_date);
 
 				var openedAmount = result.stock_amount_opened || 0;
-				$('#product-' + productId + '-opened-amount').parent().effect('highlight', {}, 500);
-				$('#product-' + productId + '-opened-amount').fadeOut(500, function ()
+				if (openedAmount > 0)
 				{
-					if (openedAmount > 0)
-					{
-						$(this).text(__t('%s opened', openedAmount)).fadeIn(500);
-					}
-					else
-					{
-						$(this).text("").fadeIn(500);
-					}
-				});
+					$('#product-' + productId + '-opened-amount').text(__t('%s opened', openedAmount));
+				}
+				else
+				{
+					$('#product-' + productId + '-opened-amount').text("");
+				}
 
 				if (result.stock_amount == 0 && result.product.min_stock_amount > 0)
 				{
@@ -368,20 +309,12 @@ function RefreshProductRow(productId)
 				}
 			}
 
-			$('#product-' + productId + '-next-best-before-date').parent().effect('highlight', {}, 500);
-			$('#product-' + productId + '-next-best-before-date').fadeOut(500, function()
-			{
-				$(this).text(result.next_best_before_date).fadeIn(500);
-			});
-			$('#product-' + productId + '-next-best-before-date-timeago').attr('datetime', result.next_best_before_date);
+			$('#product-' + productId + '-next-best-before-date').text(result.next_best_before_date);
+			$('#product-' + productId + '-next-best-before-date-timeago').attr('datetime', result.next_best_before_date + ' 23:59:59');
 
 			if (result.stock_amount_opened > 0)
 			{
-				$('#product-' + productId + '-opened-amount').parent().effect('highlight', {}, 500);
-				$('#product-' + productId + '-opened-amount').fadeOut(500, function()
-				{
-					$(this).text(__t('%s opened', result.stock_amount_opened)).fadeIn(500);
-				});
+				$('#product-' + productId + '-opened-amount').text(__t('%s opened', result.stock_amount_opened));
 			}
 			else
 			{
@@ -390,18 +323,11 @@ function RefreshProductRow(productId)
 
 			if (parseInt(result.is_aggregated_amount) === 1)
 			{
-				$('#product-' + productId + '-amount-aggregated').fadeOut(500, function()
-				{
-					$(this).text(result.stock_amount_aggregated).fadeIn(500);
-				});
+				$('#product-' + productId + '-amount-aggregated').text(result.stock_amount_aggregated);
 
 				if (result.stock_amount_opened_aggregated > 0)
 				{
-					$('#product-' + productId + '-opened-amount-aggregated').parent().effect('highlight', {}, 500);
-					$('#product-' + productId + '-opened-amount-aggregated').fadeOut(500, function ()
-					{
-						$(this).text(__t('%s opened', result.stock_amount_opened_aggregated)).fadeIn(500);
-					});
+					$('#product-' + productId + '-opened-amount-aggregated').text(__t('%s opened', result.stock_amount_opened_aggregated));
 				}
 				else
 				{
@@ -412,8 +338,8 @@ function RefreshProductRow(productId)
 			// Needs to be delayed because of the animation above the date-text would be wrong if fired immediately...
 			setTimeout(function()
 			{
-				RefreshContextualTimeago();
-				RefreshLocaleNumberDisplay();
+				RefreshContextualTimeago("#product-" + productId + "-row");
+				RefreshLocaleNumberDisplay("#product-" + productId + "-row");
 			}, 600);
 		},
 		function(xhr)

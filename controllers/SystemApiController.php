@@ -2,48 +2,67 @@
 
 namespace Grocy\Controllers;
 
-use \Grocy\Services\DatabaseService;
-use \Grocy\Services\ApplicationService;
-
 class SystemApiController extends BaseApiController
 {
-	public function __construct(\Slim\Container $container)
+	public function GetConfig(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
-		parent::__construct($container);
-		$this->DatabaseService = new DatabaseService();
-		$this->ApplicationService = new ApplicationService();
+		try
+		{
+			$constants = get_defined_constants();
+
+			// Some GROCY_* constants are not really config settings and therefore should not be exposed
+			unset($constants['GROCY_AUTHENTICATED'], $constants['GROCY_DATAPATH'], $constants['GROCY_IS_EMBEDDED_INSTALL'], $constants['GROCY_USER_ID']);
+
+			$returnArray = [];
+
+			foreach ($constants as $constant => $value)
+			{
+				if (substr($constant, 0, 6) === 'GROCY_')
+				{
+					$returnArray[substr($constant, 6)] = $value;
+				}
+			}
+
+			return $this->ApiResponse($response, $returnArray);
+		}
+		catch (\Exception $ex)
+		{
+			return $this->GenericErrorResponse($response, $ex->getMessage());
+		}
 	}
 
-	protected $DatabaseService;
-	protected $ApplicationService;
-
-	public function GetDbChangedTime(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
+	public function GetDbChangedTime(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
-		return $this->ApiResponse(array(
-			'changed_time' => $this->DatabaseService->GetDbChangedTime()
-		));
+		return $this->ApiResponse($response, [
+			'changed_time' => $this->getDatabaseService()->GetDbChangedTime()
+		]);
 	}
 
-	public function LogMissingLocalization(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
+	public function GetSystemInfo(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
+	{
+		return $this->ApiResponse($response, $this->getApplicationService()->GetSystemInfo());
+	}
+
+	public function LogMissingLocalization(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
 		if (GROCY_MODE === 'dev')
 		{
 			try
 			{
-				$requestBody = $request->getParsedBody();
+				$requestBody = $this->GetParsedAndFilteredRequestBody($request);
 
-				$this->LocalizationService->CheckAndAddMissingTranslationToPot($requestBody['text']);
+				$this->getLocalizationService()->CheckAndAddMissingTranslationToPot($requestBody['text']);
 				return $this->EmptyApiResponse($response);
 			}
 			catch (\Exception $ex)
 			{
 				return $this->GenericErrorResponse($response, $ex->getMessage());
 			}
-		}	
+		}
 	}
 
-	public function GetSystemInfo(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
+	public function __construct(\DI\Container $container)
 	{
-		return $this->ApiResponse($this->ApplicationService->GetSystemInfo());
+		parent::__construct($container);
 	}
 }

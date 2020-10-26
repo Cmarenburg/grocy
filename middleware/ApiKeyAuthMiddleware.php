@@ -2,97 +2,79 @@
 
 namespace Grocy\Middleware;
 
-use \Grocy\Services\SessionService;
-use \Grocy\Services\ApiKeyService;
+use Grocy\Services\ApiKeyService;
+use Psr\Http\Message\ResponseFactoryInterface;
+use Psr\Http\Message\ServerRequestInterface as Request;
+use Slim\Routing\RouteContext;
 
-class ApiKeyAuthMiddleware extends BaseMiddleware
+class ApiKeyAuthMiddleware extends AuthMiddleware
 {
-	public function __construct(\Slim\Container $container, string $sessionCookieName, string $apiKeyHeaderName)
-	{
-		parent::__construct($container);
-		$this->SessionCookieName = $sessionCookieName;
-		$this->ApiKeyHeaderName = $apiKeyHeaderName;
-	}
-
-	protected $SessionCookieName;
 	protected $ApiKeyHeaderName;
 
-	public function __invoke(\Slim\Http\Request $request, \Slim\Http\Response $response, callable $next)
+	public function __construct(\DI\Container $container, ResponseFactoryInterface $responseFactory)
 	{
-		$route = $request->getAttribute('route');
+		parent::__construct($container, $responseFactory);
+		$this->ApiKeyHeaderName = $this->AppContainer->get('ApiKeyHeaderName');
+	}
+
+	public function authenticate(Request $request)
+	{
+		if (!defined('GROCY_SHOW_AUTH_VIEWS'))
+		{
+			define('GROCY_SHOW_AUTH_VIEWS', true);
+		}
+
+		$routeContext = RouteContext::fromRequest($request);
+		$route = $routeContext->getRoute();
 		$routeName = $route->getName();
 
-		if (GROCY_IS_DEMO_INSTALL || GROCY_IS_EMBEDDED_INSTALL || GROCY_DISABLE_AUTH)
+		$validApiKey = true;
+		$usedApiKey = null;
+
+		$apiKeyService = new ApiKeyService();
+
+		// First check of the API key in the configured header
+		if (!$request->hasHeader($this->ApiKeyHeaderName) || !$apiKeyService->IsValidApiKey($request->getHeaderLine($this->ApiKeyHeaderName)))
 		{
-			define('GROCY_AUTHENTICATED', true);
-			$response = $next($request, $response);
+			$validApiKey = false;
 		}
 		else
 		{
-			$validSession = true;
+			$usedApiKey = $request->getHeaderLine($this->ApiKeyHeaderName);
+		}
+
+		// Not recommended, but it's also possible to provide the API key via a query parameter (same name as the configured header)
+		if (!$validApiKey && !empty($request->getQueryParam($this->ApiKeyHeaderName)) && $apiKeyService->IsValidApiKey($request->getQueryParam($this->ApiKeyHeaderName)))
+		{
 			$validApiKey = true;
-			$usedApiKey = null;
-			
-			$sessionService = new SessionService();
-			if (!isset($_COOKIE[$this->SessionCookieName]) || !$sessionService->IsValidSession($_COOKIE[$this->SessionCookieName]))
-			{
-				$validSession = false;
-			}
+			$usedApiKey = $request->getQueryParam($this->ApiKeyHeaderName);
+		}
 
-			$apiKeyService = new ApiKeyService();
-
-			// First check of the API key in the configured header
-			if (!$request->hasHeader($this->ApiKeyHeaderName) || !$apiKeyService->IsValidApiKey($request->getHeaderLine($this->ApiKeyHeaderName)))
+		// Handling of special purpose API keys
+		if (!$validApiKey)
+		{
+			if ($routeName === 'calendar-ical')
 			{
-				$validApiKey = false;
-			}
-			else
-			{
-				$usedApiKey = $request->getHeaderLine($this->ApiKeyHeaderName);
-			}
-
-			// Not recommended, but it's also possible to provide the API key via a query parameter (same name as the configured header)
-			if (!$validApiKey && !empty($request->getQueryParam($this->ApiKeyHeaderName)) && $apiKeyService->IsValidApiKey($request->getQueryParam($this->ApiKeyHeaderName)))
-			{
-				$validApiKey = true;
-				$usedApiKey = $request->getQueryParam($this->ApiKeyHeaderName);
-			}
-
-			// Handling of special purpose API keys
-			if (!$validApiKey)
-			{
-				if ($routeName === 'calendar-ical')
+				if ($request->getQueryParam('secret') !== null && $apiKeyService->IsValidApiKey($request->getQueryParam('secret'), ApiKeyService::API_KEY_TYPE_SPECIAL_PURPOSE_CALENDAR_ICAL))
 				{
-					if ($request->getQueryParam('secret') !== null && $apiKeyService->IsValidApiKey($request->getQueryParam('secret'), ApiKeyService::API_KEY_TYPE_SPECIAL_PURPOSE_CALENDAR_ICAL))
-					{
-						$validApiKey = true;
-					}
+					$validApiKey = true;
+					$usedApiKey = $request->getQueryParam('secret');
 				}
-			}
-
-			if (!$validSession && !$validApiKey)
-			{
-				define('GROCY_AUTHENTICATED', false);
-				$response = $response->withStatus(401);
-			}
-			elseif ($validApiKey)
-			{
-				$user = $apiKeyService->GetUserByApiKey($usedApiKey);
-				define('GROCY_AUTHENTICATED', true);
-				define('GROCY_USER_ID', $user->id);
-
-				$response = $next($request, $response);
-			}
-			elseif ($validSession)
-			{
-				$user = $sessionService->GetUserBySessionKey($_COOKIE[$this->SessionCookieName]);
-				define('GROCY_AUTHENTICATED', true);
-				define('GROCY_USER_ID', $user->id);
-
-				$response = $next($request, $response);
 			}
 		}
 
-		return $response;
+		if ($validApiKey)
+		{
+			return $apiKeyService->GetUserByApiKey($usedApiKey);
+		}
+		else
+		{
+			return null;
+		}
+	}
+
+	public static function ProcessLogin(array $postParams)
+	{
+		throw new \Exception('Not implemented');
 	}
 }

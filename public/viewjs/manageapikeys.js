@@ -1,7 +1,8 @@
 ﻿var apiKeysTable = $('#apikeys-table').DataTable({
 	'order': [[4, 'desc']],
 	'columnDefs': [
-		{ 'orderable': false, 'targets': 0 }
+		{ 'orderable': false, 'targets': 0 },
+		{ 'searchable': false, "targets": 0 }
 	]
 });
 $('#apikeys-table tbody').removeClass("d-none");
@@ -10,7 +11,7 @@ apiKeysTable.columns.adjust().draw();
 var createdApiKeyId = GetUriParam('CreatedApiKeyId');
 if (createdApiKeyId !== undefined)
 {
-	$('#apiKeyRow_' + createdApiKeyId).effect('highlight', {}, 3000);
+	animateCSS("#apiKeyRow_" + createdApiKeyId, "pulse");
 }
 
 $("#search").on("keyup", Delay(function()
@@ -24,7 +25,7 @@ $("#search").on("keyup", Delay(function()
 	apiKeysTable.search(value).draw();
 }, 200));
 
-$(document).on('click', '.apikey-delete-button', function (e)
+$(document).on('click', '.apikey-delete-button', function(e)
 {
 	var objectName = $(e.currentTarget).attr('data-apikey-apikey');
 	var objectId = $(e.currentTarget).attr('data-apikey-id');
@@ -60,3 +61,12 @@ $(document).on('click', '.apikey-delete-button', function (e)
 		}
 	});
 });
+$('.apikey-show-qr-button').on('click', function()
+{
+	var qrcodeHtml = getQRCodeForAPIKey($(this).data('apikey-type'), $(this).data('apikey-key'));
+	bootbox.alert({
+		title: __t('API key'),
+		message: "<p class='text-center'>" + qrcodeHtml + "</p>",
+		closeButton: false
+	});
+})

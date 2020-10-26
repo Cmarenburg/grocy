@@ -2,23 +2,26 @@
 
 namespace Grocy\Controllers;
 
-use \Grocy\Services\UsersService;
+use Grocy\Controllers\Users\User;
 
 class UsersApiController extends BaseApiController
 {
-	public function __construct(\Slim\Container $container)
-	{
-		parent::__construct($container);
-		$this->UsersService = new UsersService();
-	}
-
-	protected $UsersService;
-
-	public function GetUsers(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
+	public function AddPermission(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
 		try
 		{
-			return $this->ApiResponse($this->UsersService->GetUsersAsDto());
+			User::checkPermission($request, User::PERMISSION_ADMIN);
+			$requestBody = $this->GetParsedAndFilteredRequestBody($request);
+
+			$this->getDatabase()->user_permissions()->createRow([
+				'user_id' => $args['userId'],
+				'permission_id' => $requestBody['permission_id']
+			])->save();
+			return $this->EmptyApiResponse($response);
+		}
+		catch (\Slim\Exception\HttpSpecializedException $ex)
+		{
+			return $this->GenericErrorResponse($response, $ex->getMessage(), $ex->getCode());
 		}
 		catch (\Exception $ex)
 		{
@@ -26,9 +29,10 @@ class UsersApiController extends BaseApiController
 		}
 	}
 
-	public function CreateUser(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
+	public function CreateUser(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
-		$requestBody = $request->getParsedBody();
+		User::checkPermission($request, User::PERMISSION_USERS_CREATE);
+		$requestBody = $this->GetParsedAndFilteredRequestBody($request);
 
 		try
 		{
@@ -37,7 +41,7 @@ class UsersApiController extends BaseApiController
 				throw new \Exception('Request body could not be parsed (probably invalid JSON format or missing/wrong Content-Type header)');
 			}
 
-			$this->UsersService->CreateUser($requestBody['username'], $requestBody['first_name'], $requestBody['last_name'], $requestBody['password']);
+			$this->getUsersService()->CreateUser($requestBody['username'], $requestBody['first_name'], $requestBody['last_name'], $requestBody['password']);
 			return $this->EmptyApiResponse($response);
 		}
 		catch (\Exception $ex)
@@ -46,11 +50,12 @@ class UsersApiController extends BaseApiController
 		}
 	}
 
-	public function DeleteUser(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
+	public function DeleteUser(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
+		User::checkPermission($request, User::PERMISSION_USERS_EDIT);
 		try
 		{
-			$this->UsersService->DeleteUser($args['userId']);
+			$this->getUsersService()->DeleteUser($args['userId']);
 			return $this->EmptyApiResponse($response);
 		}
 		catch (\Exception $ex)
@@ -59,13 +64,22 @@ class UsersApiController extends BaseApiController
 		}
 	}
 
-	public function EditUser(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
+	public function EditUser(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
-		$requestBody = $request->getParsedBody();
+		if ($args['userId'] == GROCY_USER_ID)
+		{
+			User::checkPermission($request, User::PERMISSION_USERS_EDIT_SELF);
+		}
+		else
+		{
+			User::checkPermission($request, User::PERMISSION_USERS_EDIT);
+		}
+
+		$requestBody = $this->GetParsedAndFilteredRequestBody($request);
 
 		try
 		{
-			$this->UsersService->EditUser($args['userId'], $requestBody['username'], $requestBody['first_name'], $requestBody['last_name'], $requestBody['password']);
+			$this->getUsersService()->EditUser($args['userId'], $requestBody['username'], $requestBody['first_name'], $requestBody['last_name'], $requestBody['password']);
 			return $this->EmptyApiResponse($response);
 		}
 		catch (\Exception $ex)
@@ -74,12 +88,12 @@ class UsersApiController extends BaseApiController
 		}
 	}
 
-	public function GetUserSetting(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
+	public function GetUserSetting(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
 		try
 		{
-			$value = $this->UsersService->GetUserSetting(GROCY_USER_ID, $args['settingKey']);
-			return $this->ApiResponse(array('value' => $value));
+			$value = $this->getUsersService()->GetUserSetting(GROCY_USER_ID, $args['settingKey']);
+			return $this->ApiResponse($response, ['value' => $value]);
 		}
 		catch (\Exception $ex)
 		{
@@ -87,18 +101,104 @@ class UsersApiController extends BaseApiController
 		}
 	}
 
-	public function SetUserSetting(\Slim\Http\Request $request, \Slim\Http\Response $response, array $args)
+	public function GetUserSettings(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
 	{
 		try
 		{
-			$requestBody = $request->getParsedBody();
+			return $this->ApiResponse($response, $this->getUsersService()->GetUserSettings(GROCY_USER_ID));
+		}
+		catch (\Exception $ex)
+		{
+			return $this->GenericErrorResponse($response, $ex->getMessage());
+		}
+	}
 
-			$value = $this->UsersService->SetUserSetting(GROCY_USER_ID, $args['settingKey'], $requestBody['value']);
+	public function GetUsers(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
+	{
+		User::checkPermission($request, User::PERMISSION_USERS_READ);
+		try
+		{
+			return $this->FilteredApiResponse($response, $this->getUsersService()->GetUsersAsDto(), $request->getQueryParams());
+		}
+		catch (\Exception $ex)
+		{
+			return $this->GenericErrorResponse($response, $ex->getMessage());
+		}
+	}
+
+	public function ListPermissions(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
+	{
+		try
+		{
+			User::checkPermission($request, User::PERMISSION_ADMIN);
+
+			return $this->ApiResponse(
+				$response,
+				$this->getDatabase()->user_permissions()->where($args['userId'])
+			);
+		}
+		catch (\Slim\Exception\HttpSpecializedException $ex)
+		{
+			return $this->GenericErrorResponse($response, $ex->getMessage(), $ex->getCode());
+		}
+		catch (\Exception $ex)
+		{
+			return $this->GenericErrorResponse($response, $ex->getMessage());
+		}
+	}
+
+	public function SetPermissions(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
+	{
+		try
+		{
+			User::checkPermission($request, User::PERMISSION_ADMIN);
+			$requestBody = $this->GetParsedAndFilteredRequestBody($request);
+			$db = $this->getDatabase();
+			$db->user_permissions()
+				->where('user_id', $args['userId'])
+				->delete();
+
+			$perms = [];
+
+			foreach ($requestBody['permissions'] as $perm_id)
+			{
+				$perms[] = [
+					'user_id' => $args['userId'],
+					'permission_id' => $perm_id
+				];
+			}
+
+			$db->insert('user_permissions', $perms, 'batch');
+
+			return $this->EmptyApiResponse($response);
+		}
+		catch (\Slim\Exception\HttpSpecializedException $ex)
+		{
+			return $this->GenericErrorResponse($response, $ex->getMessage(), $ex->getCode());
+		}
+		catch (\Exception $ex)
+		{
+			return $this->GenericErrorResponse($response, $ex->getMessage());
+		}
+	}
+
+	public function SetUserSetting(\Psr\Http\Message\ServerRequestInterface $request, \Psr\Http\Message\ResponseInterface $response, array $args)
+	{
+		try
+		{
+			$requestBody = $this->GetParsedAndFilteredRequestBody($request);
+
+			$value = $this->getUsersService()->SetUserSetting(GROCY_USER_ID, $args['settingKey'], $requestBody['value']);
 			return $this->EmptyApiResponse($response);
 		}
 		catch (\Exception $ex)
 		{
 			return $this->GenericErrorResponse($response, $ex->getMessage());
 		}
+	}
+
+	public function __construct(\DI\Container $container)
+	{
+		parent::__construct($container);
 	}
 }

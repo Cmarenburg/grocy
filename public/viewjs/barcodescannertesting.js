@@ -1,7 +1,7 @@
 ﻿Grocy.BarCodeScannerTestingHitCount = 0;
 Grocy.BarCodeScannerTestingMissCount = 0;
 
-$("#scanned_barcode").on("blur", function (e)
+$("#scanned_barcode").on("blur", function(e)
 {
 	OnBarcodeScanned($("#scanned_barcode").val());
 });
@@ -41,7 +41,7 @@ setTimeout(function()
 if (GetUriParam("barcode") !== undefined)
 {
 	$("#expected_barcode").val(GetUriParam("barcode"));
-	setTimeout(function ()
+	setTimeout(function()
 	{
 		$("#expected_barcode").keyup();
 		$("#scanned_barcode").focus();
@@ -54,27 +54,23 @@ function OnBarcodeScanned(barcode)
 	{
 		return;
 	}
-	
+
 	var bgClass = "";
 	if (barcode != $("#expected_barcode").val())
 	{
 		Grocy.BarCodeScannerTestingMissCount++;
 		bgClass = "bg-danger";
 
-		$("#miss-count").fadeOut(200, function ()
-		{
-			$(this).text(Grocy.BarCodeScannerTestingMissCount).fadeIn(200);
-		});
+		$("#miss-count").text(Grocy.BarCodeScannerTestingMissCount);
+		animateCSS("#miss-count", "pulse");
 	}
 	else
 	{
 		Grocy.BarCodeScannerTestingHitCount++;
 		bgClass = "bg-success";
 
-		$("#hit-count").fadeOut(200, function ()
-		{
-			$(this).text(Grocy.BarCodeScannerTestingHitCount).fadeIn(200);
-		});
+		$("#hit-count").text(Grocy.BarCodeScannerTestingHitCount);
+		animateCSS("#hit-count", "pulse");
 	}
 
 	$("#scanned_codes").prepend("<option class='" + bgClass + "'>" + barcode + "</option>");
@@ -89,7 +85,12 @@ function OnBarcodeScanned(barcode)
 	}, 200);
 }
 
-$(document).on("Grocy.BarcodeScanned", function(e, barcode)
+$(document).on("Grocy.BarcodeScanned", function(e, barcode, target)
 {
+	if (target !== "#scanned_barcod")
+	{
+		return;
+	}
+
 	OnBarcodeScanned(barcode);
 });

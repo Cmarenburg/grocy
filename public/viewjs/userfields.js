@@ -1,7 +1,8 @@
 ﻿var userfieldsTable = $('#userfields-table').DataTable({
 	'order': [[1, 'asc']],
 	'columnDefs': [
-		{ 'orderable': false, 'targets': 0 }
+		{ 'orderable': false, 'targets': 0 },
+		{ 'searchable': false, "targets": 0 }
 	]
 });
 $('#userfields-table tbody').removeClass("d-none");
@@ -30,7 +31,7 @@ $("#entity-filter").on("change", function()
 	$("#new-userfield-button").attr("href", U("/userfield/new?entity=" + value));
 });
 
-$(document).on('click', '.userfield-delete-button', function (e)
+$(document).on('click', '.userfield-delete-button', function(e)
 {
 	var objectName = $(e.currentTarget).attr('data-userfield-name');
 	var objectId = $(e.currentTarget).attr('data-userfield-id');
